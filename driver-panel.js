@@ -13,6 +13,15 @@
     const response = await fetch(API + path, {...options, headers});
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      // Po redeployu albo po wygaśnięciu tokenu nie zostawiamy kierowcy na
+      // pustym ekranie transportów. Czyścimy nieważną sesję i pokazujemy
+      // ponownie zwykłe logowanie z jasnym komunikatem.
+      if (response.status === 401) {
+        localStorage.removeItem('betonDriverToken');
+        $('app').classList.add('hidden');
+        $('login').classList.remove('hidden');
+        setMessage('Sesja wygasła lub została unieważniona. Zaloguj się ponownie.');
+      }
       throw Error(data.error || `Błąd połączenia HTTP ${response.status}.`);
     }
     return response;

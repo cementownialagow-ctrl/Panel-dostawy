@@ -47,7 +47,10 @@
   }
   function card(x) {
     const action = next[x.status];
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="actions">${x.invoice_id ? `<button class="btn" data-action="invoice" data-id="${x.id}">Pobierz fakturę</button>` : ''}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div></article>`;
+    const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
+    const delivery = x.planned_delivery_time ? `Dostawa: ${x.planned_delivery_time}` : 'Dostawa: nie ustalono';
+    const date = x.planned_date ? ` · ${x.planned_date}` : '';
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${x.invoice_id ? `<button class="btn" data-action="invoice" data-id="${x.id}">Pobierz fakturę</button>` : ''}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div></article>`;
   }
   async function load() {
     $('list').innerHTML = '<div class="card">Ładowanie transportów…</div>';

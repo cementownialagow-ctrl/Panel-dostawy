@@ -3,8 +3,8 @@
   const API = 'https://cementownia-admin.onrender.com';
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const names = {assigned:'Przypisany',issued:'Towar wydany',in_transit:'W drodze',delivered:'Dostarczony',returned:'Powrót',closed:'Zamknięty',problem:'Problem'};
-  const next = {assigned:['issued','Potwierdź wydanie'],issued:['in_transit','Potwierdź wyjazd'],in_transit:['delivered','Potwierdź dostawę'],delivered:['returned','Potwierdź powrót']};
+  const names = {assigned:'Przypisany',issued:'Towar wydany',in_transit:'W dostawie',closed:'Na miejscu',delivered:'WZ podpisane',returned:'Wrócił na bazę',problem:'Problem'};
+  const next = {assigned:['issued','Potwierdź wydanie'],issued:['in_transit','Potwierdź wyjazd'],in_transit:['closed','Potwierdź przyjazd na miejsce'],closed:['delivered','Potwierdź WZ podpisane'],delivered:['returned','Potwierdź powrót na bazę']};
   const token = () => localStorage.getItem('betonDriverToken') || '';
   const setMessage = (text) => { $('loginMsg').textContent = text; };
   async function api(path, options = {}) {

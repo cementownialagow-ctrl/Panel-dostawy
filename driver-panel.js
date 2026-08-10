@@ -50,7 +50,8 @@
     const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
     const delivery = x.planned_delivery_time ? `Dostawa: ${x.planned_delivery_time}` : 'Dostawa: nie ustalono';
     const date = x.planned_date ? ` · ${x.planned_date}` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${x.invoice_id ? `<button class="btn" data-action="invoice" data-id="${x.id}">Pobierz fakturę</button>` : ''}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div></article>`;
+    const signedWzPhoto = ['delivered','returned'].includes(x.status) ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/jpeg,image/png,image/webp" capture="environment"><button class="btn" data-action="photo" data-id="${x.id}">Dodaj zdjęcie podpisanego WZ</button></div>` : '';
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${x.invoice_id ? `<button class="btn" data-action="invoice" data-id="${x.id}">Pobierz fakturę</button>` : ''}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${signedWzPhoto}</article>`;
   }
   async function load() {
     $('list').innerHTML = '<div class="card">Ładowanie transportów…</div>';
@@ -67,6 +68,7 @@
       try {
         if (button.dataset.action === 'invoice') { const r = await api(`/api/driver/transports/${button.dataset.id}/invoice`); const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'faktura.pdf'; a.click(); }
         if (button.dataset.action === 'status') { await api(`/api/driver/transports/${button.dataset.id}/status`, {method:'POST', body:JSON.stringify({status:button.dataset.status})}); await load(); }
+        if (button.dataset.action === 'photo') { const photo = $(`photo-${button.dataset.id}`)?.files?.[0]; if (!photo) throw Error('Najpierw wybierz zdjęcie podpisanego WZ.'); const form = new FormData(); form.append('photo', photo); await api(`/api/driver/transports/${button.dataset.id}/photos`, {method:'POST', body:form}); alert('Zdjęcie podpisanego WZ zostało zapisane.'); }
       } catch (error) { alert(error.message); }
     });
     if (token()) { $('login').classList.add('hidden'); $('app').classList.remove('hidden'); load(); }

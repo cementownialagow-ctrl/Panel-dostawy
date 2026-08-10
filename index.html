@@ -23,7 +23,8 @@
   <script>
     const SUPABASE_URL=window.BETON_CONFIG?.SUPABASE_URL||'';
     const SUPABASE_ANON_KEY=window.BETON_CONFIG?.SUPABASE_ANON_KEY||'';
-    const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    const portalConfigured=Boolean(SUPABASE_URL.startsWith('https://')&&SUPABASE_URL.includes('.supabase.co')&&SUPABASE_ANON_KEY&&!SUPABASE_ANON_KEY.includes('WKLEJ_'));
+    const sb=portalConfigured?supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
     let API=window.BETON_CONFIG?.API_URL||localStorage.betonApi||'http://127.0.0.1:5000';
     const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const names={assigned:'Przypisany',issued:'Towar wydany',in_transit:'W drodze',delivered:'Dostarczony',returned:'Powrót',closed:'Zamknięty',problem:'Problem'};
@@ -31,8 +32,8 @@
     const next={assigned:['issued','Potwierdź wydanie'],issued:['in_transit','Potwierdź wyjazd'],in_transit:['delivered','Potwierdź dostawę'],delivered:['returned','Potwierdź powrót']};
     function loginToAuthEmail(value){const v=String(value||'').trim().toLowerCase();if(v.includes('@'))return v;const safe=v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9._-]/g,'');return safe?`${safe}@kierowca.betonlagow.local`:''}
     async function token(){const {data}=await sb.auth.getSession();return data.session?.access_token||''}
-    async function signIn(){const authEmail=loginToAuthEmail(loginName.value);if(!authEmail){loginMsg.textContent='Podaj login.';return}loginMsg.textContent='Logowanie…';const {error}=await sb.auth.signInWithPassword({email:authEmail,password:password.value});if(error){loginMsg.textContent='Nieprawidłowy login lub hasło.';return}openApp()}
-    async function signOut(){await sb.auth.signOut();location.reload()}
+    async function signIn(){if(!portalConfigured){loginMsg.textContent='Panel kierowcy nie jest skonfigurowany: uzupełnij klucz anon public w config.js.';return}const authEmail=loginToAuthEmail(loginName.value);if(!authEmail){loginMsg.textContent='Podaj login.';return}loginMsg.textContent='Logowanie…';const {error}=await sb.auth.signInWithPassword({email:authEmail,password:password.value});if(error){loginMsg.textContent='Nieprawidłowy login lub hasło.';return}openApp()}
+    async function signOut(){if(sb)await sb.auth.signOut();location.reload()}
     async function openApp(){login.classList.add('hidden');app.classList.remove('hidden');load()}
     async function api(path,opt={}){const t=await token();const r=await fetch(API+path,{...opt,headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json',...(opt.headers||{})}});if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||`Błąd ${r.status}`);return r}
     async function load(){list.innerHTML='<div class="card">Ładowanie…</div>';try{const j=await (await api('/api/driver/transports')).json();list.innerHTML=j.transports.length?j.transports.map(card).join(''):'<div class="card">Brak przypisanych transportów.</div>'}catch(e){list.innerHTML=`<div class="card error">${esc(e.message)}<br><span class="muted">Sprawdź adres API w config.js.</span></div>`}}
@@ -40,8 +41,7 @@
     async function status(id,s){const receiver=document.getElementById('receiver-'+id)?.value||'',notes=document.getElementById('notes-'+id)?.value||'';try{await api(`/api/driver/transports/${id}/status`,{method:'POST',body:JSON.stringify({status:s,receiver_name:receiver,notes})});load()}catch(e){alert(e.message)}}
     async function invoice(id){const r=await api(`/api/driver/transports/${id}/invoice`);const b=await r.blob(),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='faktura.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
     async function upload(id,files){const {data:{user}}=await sb.auth.getUser();for(const f of files){const path=`${user.id}/${id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const {error}=await sb.storage.from('delivery-photos').upload(path,f);if(error){alert(error.message);return}const {error:e}=await sb.from('delivery_photos').insert({transport_id:id,storage_ref:path,created_by:user.id});if(e){alert(e.message);return}}alert('Zdjęcia zapisane.')}
-    sb.auth.getSession().then(({data})=>data.session&&openApp());
+    if(portalConfigured) sb.auth.getSession().then(({data})=>data.session&&openApp());
   </script>
 </body>
 </html>
-

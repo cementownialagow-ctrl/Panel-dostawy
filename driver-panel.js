@@ -48,12 +48,15 @@
   function card(x) {
     const action = next[x.status];
     const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
-    const delivery = x.planned_delivery_time ? `Dostawa: ${x.planned_delivery_time}` : 'Dostawa: nie ustalono';
     const date = x.planned_date ? ` · ${x.planned_date}` : '';
+    const destination = String(x.destination || '').trim();
+    const mapsUrl = destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving` : '';
     // Kierowca wykonuje wyłącznie etapy transportu. Faktury pozostają w panelu głównym.
     // Zdjęcie podpisanego WZ wolno dodać tylko na etapie dostawy, przed powrotem na bazę.
     const signedWzPhoto = x.status === 'delivered' ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/*" capture="environment" style="display:none"><button id="camera-${x.id}" class="btn" data-action="camera" data-id="${x.id}">${x.has_signed_wz_photo ? 'Zrób ponownie' : 'Zrób zdjęcie podpisanego WZ'}</button></div>` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${signedWzPhoto}</article>`;
+    const completed = x.status === 'returned' ? '<div class="muted" style="margin-top:14px;font-weight:700;color:#18804b">Dobra robota! Zamówienie zrealizowane.</div>' : '';
+    const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">Otwórz trasę w Google Maps</a>` : '';
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b>${esc(date)}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${signedWzPhoto}${completed}</article>`;
   }
   async function load() {
     $('list').innerHTML = '<div class="card">Ładowanie transportów…</div>';

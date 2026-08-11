@@ -50,8 +50,10 @@
     const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
     const delivery = x.planned_delivery_time ? `Dostawa: ${x.planned_delivery_time}` : 'Dostawa: nie ustalono';
     const date = x.planned_date ? ` · ${x.planned_date}` : '';
-    const signedWzPhoto = ['delivered','returned'].includes(x.status) ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/*" capture="environment" style="display:none"><button id="camera-${x.id}" class="btn" data-action="camera" data-id="${x.id}">${x.has_signed_wz_photo ? 'Zrób ponownie' : 'Zrób zdjęcie podpisanego WZ'}</button></div>` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${x.invoice_id ? `<button class="btn" data-action="invoice" data-id="${x.id}">Pobierz fakturę</button>` : ''}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${signedWzPhoto}</article>`;
+    // Kierowca wykonuje wyłącznie etapy transportu. Faktury pozostają w panelu głównym.
+    // Zdjęcie podpisanego WZ wolno dodać tylko na etapie dostawy, przed powrotem na bazę.
+    const signedWzPhoto = x.status === 'delivered' ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/*" capture="environment" style="display:none"><button id="camera-${x.id}" class="btn" data-action="camera" data-id="${x.id}">${x.has_signed_wz_photo ? 'Zrób ponownie' : 'Zrób zdjęcie podpisanego WZ'}</button></div>` : '';
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b> · <b>${esc(delivery)}</b>${esc(date)}</div><div class="actions">${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${signedWzPhoto}</article>`;
   }
   async function load() {
     $('list').innerHTML = '<div class="card">Ładowanie transportów…</div>';
@@ -75,7 +77,6 @@
     document.addEventListener('click', async (event) => {
       const button = event.target.closest('[data-action]'); if (!button) return;
       try {
-        if (button.dataset.action === 'invoice') { const r = await api(`/api/driver/transports/${button.dataset.id}/invoice`); const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'faktura.pdf'; a.click(); }
         if (button.dataset.action === 'status') { await api(`/api/driver/transports/${button.dataset.id}/status`, {method:'POST', body:JSON.stringify({status:button.dataset.status})}); await load(); }
         if (button.dataset.action === 'camera') { $(`photo-${button.dataset.id}`)?.click(); }
       } catch (error) { alert(error.message); }

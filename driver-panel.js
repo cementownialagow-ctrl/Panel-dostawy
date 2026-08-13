@@ -13,6 +13,8 @@
     problem:'Problem'
   };
   const token = () => localStorage.getItem('betonDriverToken') || '';
+  let transports = [];
+  let selectedId = null;
   const setMessage = (text) => { $('loginMsg').textContent = text; };
 
   async function api(path, options = {}) {
@@ -63,7 +65,12 @@
     return null;
   }
 
-  function card(x) {
+  function listCard(x) {
+    const departure = x.planned_departure_time ? x.planned_departure_time : 'bez godziny';
+    return `<article class="card delivery-row" data-action="open" data-id="${x.id}"><div><b>${esc(departure)} · ${esc(x.customer_name)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><div class="muted" style="margin-top:8px">${esc(x.transport_no)} · WZ ${esc(x.wz_no || '—')} · ${esc(x.registration_no || '')}</div></article>`;
+  }
+
+  function detailCard(x) {
     const action = nextAction(x);
     const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
     const date = x.planned_date ? ` · ${x.planned_date}` : '';
@@ -73,14 +80,30 @@
     const completed = x.status === 'returned' ? '<div class="muted" style="margin-top:14px;font-weight:700;color:#18804b">Dostawa zakończona.</div>' : '';
     const waiting = !action && (x.status === 'assigned' || (x.status === 'issued' && !x.can_start)) ? '<div class="muted" style="margin-top:14px;font-weight:700">Oczekuje na zgodę administratora na rozpoczęcie.</div>' : '';
     const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">Otwórz trasę w Google Maps</a>` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h3>${esc(x.customer_name)}</h3><div class="muted">WZ: ${esc(x.wz_no || '—')} · ${esc(x.destination || 'Brak adresu')} · ${esc(x.registration_no || '')}</div><div class="muted" style="margin-top:8px"><b>${esc(departure)}</b>${esc(date)}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${waiting}${signedWzPhoto}${completed}</article>`;
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="actions" style="margin-top:18px">${mapsButton}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${waiting}${signedWzPhoto}${completed}</article>`;
+  }
+
+  function showList() {
+    selectedId = null;
+    $('detail').classList.add('hidden');
+    $('list').innerHTML = transports.length ? transports.map(listCard).join('') : '<div class="card">Brak niezakończonych dostaw na dzisiaj.</div>';
+  }
+
+  function showDetail(id) {
+    const x = transports.find((item) => String(item.id) === String(id));
+    if (!x) return showList();
+    selectedId = x.id;
+    $('detailContent').innerHTML = detailCard(x);
+    $('detail').classList.remove('hidden');
   }
 
   async function load() {
     $('list').innerHTML = '<div class="card">Ładowanie transportów…</div>';
     try {
       const data = await (await api('/api/driver/transports')).json();
-      $('list').innerHTML = data.transports?.length ? data.transports.map(card).join('') : '<div class="card">Brak przypisanych transportów.</div>';
+      transports = data.transports || [];
+      if (selectedId && transports.some((x) => String(x.id) === String(selectedId))) showDetail(selectedId);
+      else showList();
     } catch (error) {
       $('list').innerHTML = `<div class="card error">${esc(error.message)}</div>`;
     }
@@ -104,6 +127,8 @@
       const button = event.target.closest('[data-action]');
       if (!button) return;
       try {
+        if (button.dataset.action === 'open') showDetail(button.dataset.id);
+        if (button.dataset.action === 'back') showList();
         if (button.dataset.action === 'status') {
           await api(`/api/driver/transports/${button.dataset.id}/status`, {method:'POST', body:JSON.stringify({status:button.dataset.status})});
           await load();

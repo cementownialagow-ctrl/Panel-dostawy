@@ -9,7 +9,8 @@
     in_transit:'W drodze',
     closed:'Na miejscu',
     delivered:'WZ podpisane',
-    returned:'Powrót do bazy',
+    returning:'Wracam do bazy',
+    returned:'Powrót potwierdzony',
     problem:'Problem'
   };
   const token = () => localStorage.getItem('betonDriverToken') || '';
@@ -27,7 +28,7 @@
   function actionIcon(nextStatus) {
     if (nextStatus === 'closed') return stageIcon('in_transit');
     if (nextStatus === 'delivered') return stageIcon('delivered');
-    if (nextStatus === 'returned') return stageIcon('returned', true);
+    if (nextStatus === 'returning' || nextStatus === 'returned') return stageIcon('returning', true);
     return stageIcon('in_transit');
   }
 
@@ -73,9 +74,10 @@
 
   function nextAction(x) {
     if (x.status === 'issued' && x.can_start) return ['in_transit', 'Rozpocznij dostawę'];
-    if (x.status === 'in_transit') return ['closed', 'Jestem na miejscu'];
+    if (x.status === 'in_transit' && !x.wait_seconds) return ['closed', 'Jestem na miejscu'];
     if (x.status === 'closed') return ['delivered', 'Podpisz WZ'];
-    if (x.status === 'delivered') return ['returned', 'Zakończ dostawę / wracam'];
+    if (x.status === 'delivered') return ['returning', 'Wracam do bazy'];
+    if (x.status === 'returning' && !x.wait_seconds) return ['returned', 'Potwierdź powrót'];
     return null;
   }
 
@@ -93,8 +95,9 @@
     const signedWzPhoto = x.status === 'delivered' ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/*" capture="environment" style="display:none"><button id="camera-${x.id}" class="btn" data-action="camera" data-id="${x.id}">${x.has_signed_wz_photo ? 'Zrób ponownie' : 'Zrób zdjęcie podpisanego WZ'}</button></div>` : '';
     const completed = x.status === 'returned' ? '<div class="muted" style="margin-top:14px;font-weight:700;color:#18804b">Dostawa zakończona.</div>' : '';
     const waiting = !action && (x.status === 'assigned' || (x.status === 'issued' && !x.can_start)) ? '<div class="muted" style="margin-top:14px;font-weight:700">Oczekuje na zgodę administratora na rozpoczęcie.</div>' : '';
+    const timedWaiting = !action && x.wait_seconds ? `<div class="muted" style="margin-top:14px;font-weight:700">Następny etap będzie dostępny za około ${Math.max(1, Math.ceil(x.wait_seconds / 60))} min.</div>` : '';
     const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">Otwórz trasę w Google Maps</a>` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="stage-visual" aria-hidden="true">${stageIcon(x.status, x.status === 'returned')}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary btn-icon" data-action="status" data-id="${x.id}" data-status="${action[0]}">${actionIcon(action[0])}<span>${action[1]}</span></button>` : ''}</div>${waiting}${signedWzPhoto}${completed}</article>`;
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="stage-visual" aria-hidden="true">${stageIcon(x.status, x.status === 'returning' || x.status === 'returned')}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary btn-icon" data-action="status" data-id="${x.id}" data-status="${action[0]}">${actionIcon(action[0])}<span>${action[1]}</span></button>` : ''}</div>${waiting}${timedWaiting}${signedWzPhoto}${completed}</article>`;
   }
 
   function showList() {

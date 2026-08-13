@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const API = 'https://cementownia-admin.onrender.com';
+  const RETURN_DESTINATION = 'Beton Łagów, ul. Opatowska 21a, 26-025 Łagów';
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const names = {
@@ -90,13 +91,14 @@
     const action = nextAction(x);
     const departure = x.planned_departure_time ? `Wyjazd: ${x.planned_departure_time}` : 'Wyjazd: nie ustalono';
     const date = x.planned_date ? ` · ${x.planned_date}` : '';
-    const destination = String(x.destination || '').trim();
+    const isReturning = x.status === 'returning';
+    const destination = isReturning ? RETURN_DESTINATION : String(x.destination || '').trim();
     const mapsUrl = destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving` : '';
     const signedWzPhoto = x.status === 'delivered' ? `<div class="actions" style="margin-top:10px"><input id="photo-${x.id}" type="file" accept="image/*" capture="environment" style="display:none"><button id="camera-${x.id}" class="btn" data-action="camera" data-id="${x.id}">${x.has_signed_wz_photo ? 'Zrób ponownie' : 'Zrób zdjęcie podpisanego WZ'}</button></div>` : '';
     const completed = x.status === 'returned' ? '<div class="muted" style="margin-top:14px;font-weight:700;color:#18804b">Dostawa zakończona.</div>' : '';
     const waiting = !action && (x.status === 'assigned' || (x.status === 'issued' && !x.can_start)) ? '<div class="muted" style="margin-top:14px;font-weight:700">Oczekuje na zgodę administratora na rozpoczęcie.</div>' : '';
     const timedWaiting = !action && x.wait_seconds ? `<div class="muted" style="margin-top:14px;font-weight:700">Następny etap będzie dostępny za około ${Math.max(1, Math.ceil(x.wait_seconds / 60))} min.</div>` : '';
-    const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">Otwórz trasę w Google Maps</a>` : '';
+    const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">${isReturning ? 'Trasa powrotna do Beton Łagów' : 'Otwórz trasę w Google Maps'}</a>` : '';
     return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="stage-visual" aria-hidden="true">${stageIcon(x.status, x.status === 'returning' || x.status === 'returned')}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary btn-icon" data-action="status" data-id="${x.id}" data-status="${action[0]}">${actionIcon(action[0])}<span>${action[1]}</span></button>` : ''}</div>${waiting}${timedWaiting}${signedWzPhoto}${completed}</article>`;
   }
 

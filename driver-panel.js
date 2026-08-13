@@ -17,6 +17,20 @@
   let selectedId = null;
   const setMessage = (text) => { $('loginMsg').textContent = text; };
 
+  function stageIcon(status, mirrored = false) {
+    const flip = mirrored ? ' style="transform:scaleX(-1)"' : '';
+    if (status === 'closed') return '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4"><path d="M32 57s17-16 17-32a17 17 0 1 0-34 0c0 16 17 32 17 32Z"/><circle cx="32" cy="25" r="6"/><path d="M22 46h20"/></svg>';
+    if (status === 'delivered') return '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4"><path d="M15 8h28l8 8v40H15Z"/><path d="M43 8v10h10M23 29h20M23 38h13"/><path d="m35 50 15-15 5 5-15 15-7 2Z"/></svg>';
+    return `<svg viewBox="0 0 72 64" fill="none" stroke="currentColor" stroke-width="4"${flip}><path d="M5 18h15M2 28h16M8 38h10"/><path d="M20 18h29v25H20Z"/><path d="m49 26 9 2 8 10v5H49Z"/><circle cx="31" cy="47" r="6"/><circle cx="58" cy="47" r="6"/><circle cx="35" cy="30" r="9"/><path d="m29 24 12 12M41 24 29 36"/></svg>`;
+  }
+
+  function actionIcon(nextStatus) {
+    if (nextStatus === 'closed') return stageIcon('in_transit');
+    if (nextStatus === 'delivered') return stageIcon('delivered');
+    if (nextStatus === 'returned') return stageIcon('returned', true);
+    return stageIcon('in_transit');
+  }
+
   async function api(path, options = {}) {
     const headers = {Authorization:`Bearer ${token()}`, ...(options.headers || {})};
     if (!(options.body instanceof FormData) && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
@@ -67,7 +81,7 @@
 
   function listCard(x) {
     const departure = x.planned_departure_time ? x.planned_departure_time : 'bez godziny';
-    return `<article class="card delivery-row" data-action="open" data-id="${x.id}"><div><b>${esc(departure)} · ${esc(x.customer_name)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><div class="muted" style="margin-top:8px">${esc(x.transport_no)} · WZ ${esc(x.wz_no || '—')} · ${esc(x.registration_no || '')}</div></article>`;
+    return `<article class="card delivery-row" data-action="open" data-id="${x.id}"><b>${esc(departure)} · ${esc(x.customer_name)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span><div class="muted" style="margin-top:8px">${esc(x.transport_no)} · WZ ${esc(x.wz_no || '—')} · ${esc(x.registration_no || '')}</div></article>`;
   }
 
   function detailCard(x) {
@@ -80,7 +94,7 @@
     const completed = x.status === 'returned' ? '<div class="muted" style="margin-top:14px;font-weight:700;color:#18804b">Dostawa zakończona.</div>' : '';
     const waiting = !action && (x.status === 'assigned' || (x.status === 'issued' && !x.can_start)) ? '<div class="muted" style="margin-top:14px;font-weight:700">Oczekuje na zgodę administratora na rozpoczęcie.</div>' : '';
     const mapsButton = mapsUrl && x.status !== 'returned' ? `<a class="btn" href="${esc(mapsUrl)}" target="_blank" rel="noopener">Otwórz trasę w Google Maps</a>` : '';
-    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="actions" style="margin-top:18px">${mapsButton}${action ? `<button class="btn primary" data-action="status" data-id="${x.id}" data-status="${action[0]}">${action[1]}</button>` : ''}</div>${waiting}${signedWzPhoto}${completed}</article>`;
+    return `<article class="card"><div><b>${esc(x.transport_no)}</b> <span class="badge">${esc(names[x.status] || x.status)}</span></div><h2>${esc(x.customer_name)}</h2><div>WZ: <b>${esc(x.wz_no || '—')}</b></div><div style="margin-top:8px">Adres: <b>${esc(x.destination || 'Brak adresu')}</b></div><div style="margin-top:8px">Auto: <b>${esc(x.registration_no || '—')}</b></div><div class="muted" style="margin-top:12px"><b>${esc(departure)}</b>${esc(date)}</div><div class="stage-visual" aria-hidden="true">${stageIcon(x.status, x.status === 'returned')}</div><div class="actions">${mapsButton}${action ? `<button class="btn primary btn-icon" data-action="status" data-id="${x.id}" data-status="${action[0]}">${actionIcon(action[0])}<span>${action[1]}</span></button>` : ''}</div>${waiting}${signedWzPhoto}${completed}</article>`;
   }
 
   function showList() {
